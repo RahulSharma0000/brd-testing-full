@@ -1,0 +1,44 @@
+# =========================
+# Python / Django
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+db.sqlite3
+*.log
+staticfiles/
+media/
+.env
+
+# =========================
+# Node / React
+# =========================
+node_modules/
+dist/
+build/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# =========================
+# Misc
+# =========================
+.cache/
+*.swp
+*.tmp
+.coverage
+htmlcov/
+Hover over a message to pin it
