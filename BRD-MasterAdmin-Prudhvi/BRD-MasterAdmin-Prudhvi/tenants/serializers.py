@@ -154,3 +154,74 @@ class TenantRuleConfigSerializer(serializers.ModelSerializer):
             "tenant": {"read_only": True}   # 🔥 MUST BE READ ONLY
         }
 
+
+# -------------------- Tenant Create (Master Admin Only) --------------------
+
+class TenantCreateByMasterSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=200)
+    tenant_type = serializers.ChoiceField(
+        choices=[('BANK','Bank'),('NBFC','NBFC'),('P2P','P2P'),('FINTECH','FinTech')]
+    )
+    email = serializers.EmailField()
+    phone = serializers.CharField(max_length=15, required=False, allow_blank=True)
+    address = serializers.CharField(required=False, allow_blank=True)
+    city = serializers.CharField(required=False, allow_blank=True)
+    state = serializers.CharField(required=False, allow_blank=True)
+    pincode = serializers.CharField(required=False, allow_blank=True)
+    is_active = serializers.BooleanField(default=True)
+
+    # ---------- VALIDATIONS (KYU: duplicate & bad data avoid) ----------
+
+    def validate_email(self, value):
+        if Tenant.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("Tenant with this email already exists")
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("User with this email already exists")
+        return value
+
+    def validate_name(self, value):
+        if Tenant.objects.filter(name__iexact=value).exists():
+            raise serializers.ValidationError("Tenant with this name already exists")
+        return value
+
+    def validate_phone(self, value):
+        if value and not value.isdigit():
+            raise serializers.ValidationError("Phone must contain only digits")
+        if value and len(value) < 10:
+            raise serializers.ValidationError("Phone number must be at least 10 digits")
+        return value
+
+    # ---------- CREATE (KYU: password auto-generate sirf yahan) ----------
+
+    @transaction.atomic
+    def create(self, validated_data):
+        request = self.context["request"]
+        user = request.user
+
+        # 🔒 Safety: sirf master admin allowed
+        if not (user.is_superuser or getattr(user, "role", "") == "MASTER_ADMIN"):
+            raise serializers.ValidationError("Permission denied")
+
+        # 1️⃣ Tenant create (tenant_id auto-generate ho jayega)
+        tenant = Tenant.objects.create(**validated_data)
+
+        # 2️⃣ Password auto-generate
+        raw_password = User.objects.make_random_password(length=10)
+
+        # 3️⃣ Tenant admin user create
+        User.objects.create_user(
+            email=tenant.email,
+            password=raw_password,
+            tenant=tenant,
+            role="TENANT_ADMIN",
+            is_active=True
+        )
+
+        # 4️⃣ Response (sirf ek baar password)
+        return {
+            "message": "Tenant created successfully",
+            "tenant_id": str(tenant.tenant_id),
+            "email": tenant.email,
+            "password": raw_password
+        }
+

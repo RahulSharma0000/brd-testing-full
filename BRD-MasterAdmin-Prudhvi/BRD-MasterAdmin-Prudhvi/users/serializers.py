@@ -87,7 +87,7 @@
 
 #     class Meta:
 #         model = AuditLog
-#         fields = '_all_'
+#         fields = 'all'
 
 # # Signup Serializer (पब्लिक साइनअप के लिए)
 # class UserSignupSerializer(serializers.ModelSerializer):
@@ -145,7 +145,7 @@
 
 #     class Meta:
 #         model = LoginActivity
-#         fields = "__all__"   # includes id, user, user_email, etc.
+#         fields = "_all_"   # includes id, user, user_email, etc.
 
 
 # class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -270,26 +270,30 @@ class AuditLogSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AuditLog
-        fields = '_all_'
+        fields = 'all'
 
-# Signup Serializer (पब्लिक साइनअप के लिए)
 class UserSignupSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, min_length=8)
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'first_name', 'last_name', 'role', 'phone']
+        fields = ['email', 'password', 'first_name', 'last_name']
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value.lower()).exists():
+            raise serializers.ValidationError("Email already registered.")
+        return value.lower()
 
     def create(self, validated_data):
-        user = User.objects.create_user(
+        return User.objects.create_user(
             email=validated_data['email'],
             password=validated_data['password'],
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),
-            role=validated_data.get('role', 'BORROWER'),
-            phone=validated_data.get('phone', '')
+            role="MASTER_ADMIN",  # 🔒 FORCE ROLE
+            is_active=True
         )
-        return user
+
 
 class CurrentUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -327,20 +331,52 @@ class LoginActivitySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = LoginActivity
-        fields = "__all__"   # includes id, user, user_email, etc.
+        fields = "_all_"   # includes id, user, user_email, etc.
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        # 🔥 ADD ROLE TO JWT
+        token["role"] = user.role
+
+        return token
+    
     def validate(self, attrs):
         data = super().validate(attrs)
 
-        request = self.context.get("request")
         user = self.user
+        request = self.context.get("request")
 
+        # ❌ Inactive account
+        if not user.is_active:
+            raise serializers.ValidationError("Account is disabled.")
+
+        # ❌ Only MASTER_ADMIN allowed
+        if user.role != "MASTER_ADMIN":
+            LoginActivity.objects.create(
+                user=user,
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                successful=False
+            )
+            raise serializers.ValidationError("Access restricted to Master Admins only.")
+
+        # 🔐 Enforce 2FA if enabled
+        if user.is_2fa_enabled:
+            data["requires_2fa"] = True
+            data.pop("access", None)
+            data.pop("refresh", None)
+            return data
+
+        # ✅ Successful login
         LoginActivity.objects.create(
             user=user,
-            ip_address=request.META.get("REMOTE_ADDR") if request else None,
-            user_agent=request.META.get("HTTP_USER_AGENT") if request else "",
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
             successful=True
         )
 

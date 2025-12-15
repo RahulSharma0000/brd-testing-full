@@ -43,19 +43,19 @@ class Migration(migrations.Migration):
        migrations.AddField(
     model_name='financialyear',
     name='calendar',
-    field=models.ForeignKey(default=django.utils.timezone.now, on_delete=django.db.models.deletion.CASCADE, related_name='financial_years', to='tenants.calendar'),
+    field=models.ForeignKey(null=True,blank=True, on_delete=django.db.models.deletion.CASCADE, related_name='financial_years', to='tenants.calendar'),
     preserve_default=False,
 ),
 migrations.AddField(
     model_name='holiday',
     name='calendar',
-    field=models.ForeignKey(default=django.utils.timezone.now, on_delete=django.db.models.deletion.CASCADE, related_name='holidays', to='tenants.calendar'),
+    field=models.ForeignKey(null=True,blank=True,on_delete=django.db.models.deletion.CASCADE, related_name='holidays', to='tenants.calendar'),
     preserve_default=False,
 ),
 migrations.AddField(
     model_name='reportingperiod',
     name='calendar',
-    field=models.ForeignKey(default=django.utils.timezone.now, on_delete=django.db.models.deletion.CASCADE, related_name='reporting_periods', to='tenants.calendar'),
+    field=models.ForeignKey(null=True,blank=True ,on_delete=django.db.models.deletion.CASCADE, related_name='reporting_periods', to='tenants.calendar'),
     preserve_default=False,
 ),
     ]

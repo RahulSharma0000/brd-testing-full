@@ -41,7 +41,13 @@ INSTALLED_APPS = [
     "communications",
     "compliance",
     "adminpanel",
+    
 ]
+
+
+INSTALLED_APPS += ["axes"]
+
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -60,6 +66,13 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+MIDDLEWARE += ["axes.middleware.AxesMiddleware"]
+
+
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1  # hours
+
 
 ROOT_URLCONF = "brd_platform.urls"
 
@@ -119,6 +132,12 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
     ],
+      "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "5/min",
+    },
 }
 
 # ------------------------------------
@@ -135,6 +154,8 @@ CORS_ALLOWED_ORIGINS = [
 # Add missing Vite origin
 CORS_ALLOWED_ORIGINS += [
     "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+
 ]
 
 # Allow cookies / tokens
@@ -143,13 +164,14 @@ CORS_ALLOW_CREDENTIALS = True
 # CSRF fix for Vite
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
-    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
 ]
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-    "ROTATE_REFRESH_TOKENS": False,
-    "BLACKLIST_AFTER_ROTATION": False,
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": False,
 }

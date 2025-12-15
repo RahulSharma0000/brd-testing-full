@@ -66,6 +66,7 @@ import AddOccupationTypePage from "./pages/occupation/AddOccupationTypePage";
 import EditOccupationTypePage from "./pages/occupation/EditOccupationTypePage";
 import OccupationTypePage from "./pages/occupation/OccupationTypePage";
 import ViewOccupationTypePage from "./pages/occupation/ViewOccupationTypePage";
+import RequireMasterAdmin from "./auth/RequireMasterAdmin";
 
 function App() {
   return (
@@ -80,15 +81,24 @@ function App() {
         {/* DEFAULT ROUTE → Login */}
         <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/profile" element={<ProfilePage/>} />
+         {/* <Route path="/dashboard" element={<Dashboard />} />  */}
+        <Route
+          path="/dashboard"
+          element={
+            <RequireMasterAdmin>
+              <Dashboard />
+            </RequireMasterAdmin>
+          }
+        />
 
 
        
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/organizations" element={<Organization /> } />
-        <Route path="/organization/add" element={<AddOrganization />} />
-        <Route path="/organization/branches/create" element={<CreateBranch />} />
-        <Route path="/organization/list" element={<OrganizationList /> } />
-        <Route path="/organization/edit/:id" element={<EditOrganization />} />
+        <Route path="/organizations" element={<OrganizationList /> } />
+        <Route path="/organizations/add" element={<AddOrganization />} />
+        <Route path="/organizations/branches/create" element={<CreateBranch />} />
+        <Route path="/organizations/list" element={<OrganizationList /> } />
+        <Route path="/organizations/edit/:id" element={<EditOrganization />} />
        
         <Route path="/organization/branches/list" element={<BranchList />} />
         <Route path="/organization/branches/update/:id" element={<UpdateBranch />} />

@@ -3,6 +3,7 @@ import axiosInstance from "../utils/axiosInstance";
 // ✅ Fix: '/api/v1' hata diya, sirf endpoint ka naam rakha
 const BASE_URL = "/tenants/";
 
+
 export const organizationService = {
   
   // GET ALL

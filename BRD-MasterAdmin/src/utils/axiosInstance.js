@@ -21,15 +21,29 @@ axiosInstance.interceptors.request.use(
 
 // (Optional) अगर Token expire हो जाए तो Auto Logout के लिए
 axiosInstance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-      // अगर Unauthorized है, तो logout कर सकते हैं
-      // localStorage.clear();
-      // window.location.href = "/login";
+  res => res,
+  async error => {
+    if (error.response?.status === 401) {
+      const refresh = localStorage.getItem("refresh_token");
+      if (!refresh) {
+        localStorage.clear();
+        window.location.href = "/login";
+        return;
+      }
+
+      try {
+        const res = await axios.post("/api/token/refresh/", { refresh });
+        localStorage.setItem("access_token", res.data.access);
+        error.config.headers.Authorization = `Bearer ${res.data.access}`;
+        return axiosInstance(error.config);
+      } catch {
+        localStorage.clear();
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }
 );
+
 
 export default axiosInstance;

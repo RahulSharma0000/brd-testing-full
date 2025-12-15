@@ -66,6 +66,37 @@ class Setup2FAView(APIView):
         qr_code_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
         return Response({"qr_code": f"data:image/png;base64,{qr_code_str}"})
+    
+
+class Verify2FALoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email")
+        code = request.data.get("code")
+
+        user = User.objects.filter(email=email).first()
+        if not user or not user.two_fa_secret:
+            return Response({"detail": "Invalid request"}, status=400)
+
+        totp = pyotp.TOTP(user.two_fa_secret)
+        if not totp.verify(code):
+            return Response({"detail": "Invalid 2FA code"}, status=400)
+
+        refresh = RefreshToken.for_user(user)
+
+        LoginActivity.objects.create(
+            user=user,
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            successful=True
+        )
+
+        return Response({
+            "access": str(refresh.access_token),
+            "refresh": str(refresh)
+        })
+
 
 
 class Verify2FAView(APIView):

@@ -5,6 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.permissions import IsAuthenticated
 
 
 # MODELS
@@ -27,7 +28,8 @@ from .serializers import (
     ReportingPeriodSerializer,
     HolidaySerializer,
     CategorySerializer,
-    TenantRuleConfigSerializer
+    TenantRuleConfigSerializer,
+    TenantCreateByMasterSerializer
   
 )
 
@@ -118,7 +120,23 @@ class TenantSignupView(APIView):
             "refresh": str(refresh)
         }, status=201)
 
+class TenantCreateByMasterView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def post(self, request):
+        serializer = TenantCreateByMasterSerializer(
+            data=request.data,
+            context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.save()  # 👈 serializer must return dict
+
+        return Response({
+            "tenant_id": str(data["tenant_id"]),
+            "email": data["email"],
+            "password": data["password"],
+        }, status=status.HTTP_201_CREATED)
 # --------------------------------------------------------
 #            BASE VIEW FOR TENANT FILTERING
 # --------------------------------------------------------

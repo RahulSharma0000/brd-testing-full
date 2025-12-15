@@ -13,83 +13,73 @@ const Signup = () => {
     confirmPassword: ""
   });
 
+  const [errors, setErrors] = useState({});
+  const [globalError, setGlobalError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const validate = () => {
+    const newErrors = {};
+
+    if (!formData.firstName.trim()) newErrors.firstName = "First name is required";
+    if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
+
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Invalid email address";
+    }
+
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
+    }
+
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = "Confirm your password";
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+
+    // Clear field-specific error on input change
+    setErrors({ ...errors, [e.target.name]: "" });
+    setGlobalError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setGlobalError("");
+    
+    if (!validate()) return;
+
     setLoading(true);
 
-    // Email format check
-    if (!formData.email.includes("@")) {
-      alert("Please enter a valid email address.");
-      setLoading(false);
-      return;
-    }
-
-    // Password match check
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match!");
-      setLoading(false);
-      return;
-    }
-
-    // Minimum password strength
-    if (formData.password.length < 8) {
-      alert("Password must be at least 8 characters.");
-      setLoading(false);
-      return;
-    }
-
-    // Check if user already exists (localStorage)
-    const storedUsers = JSON.parse(localStorage.getItem("registeredUsers")) || [];
-    const emailExists = storedUsers.some(u => u.email === formData.email);
-
-    if (emailExists) {
-      alert("This email is already registered. Please login.");
-      setLoading(false);
-      return;
-    }
-
-    // Create user object
-    const newUser = {
-      id: Date.now(),
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email.toLowerCase().trim(),
-      password: formData.password,
-      role: "MASTER_ADMIN",
-      createdAt: new Date().toLocaleString()
-    };
-
     try {
-      // Save user (Backend-Ready)
-      const result = await authService.signup(newUser);
+      await authService.signup({
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName
+      });
 
-      // Record activity
-      await authService.recordActivity(
-        "New account created",
-        newUser.email
-      );
-
-      setLoading(false);
-      alert("Account created successfully! Please login with your credentials.");
+      alert("Master Admin account created. Please login.");
       navigate("/login");
     } catch (error) {
-      console.error("Signup error:", error);
+      const msg =
+        error.response?.data?.email?.[0] ||
+        error.response?.data?.detail ||
+        "Signup failed";
+
+      setGlobalError(msg);
+    } finally {
       setLoading(false);
-      const errorMessage = error.response?.data?.email?.[0] || 
-                          error.response?.data?.password?.[0] ||
-                          error.response?.data?.detail ||
-                          error.message ||
-                          "Failed to create account. Please try again.";
-      alert(errorMessage);
     }
   };
 
@@ -98,12 +88,13 @@ const Signup = () => {
       <div className="w-full max-w-md bg-white shadow-lg rounded-xl p-8">
 
         {/* Header */}
-        <h2 className="text-3xl font-semibold text-blue-600 mb-1">
-          Create account
-        </h2>
-        <p className="text-gray-500 mb-6">
-          Make the most of your professional life
-        </p>
+        <h2 className="text-3xl font-semibold text-blue-600 mb-1">Create account</h2>
+        <p className="text-gray-500 mb-6">Make the most of your professional life</p>
+
+        {/* Global Error */}
+        {globalError && (
+          <div className="mb-4 text-red-600 font-medium">{globalError}</div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -114,12 +105,14 @@ const Signup = () => {
             <input
               type="text"
               name="firstName"
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className={`w-full px-3 py-2 bg-gray-50 border rounded-lg focus:ring-2 outline-none ${
+                errors.firstName ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-500"
+              }`}
               placeholder="Enter first name"
-              required
               value={formData.firstName}
               onChange={handleChange}
             />
+            {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
           </div>
 
           {/* Last Name */}
@@ -128,12 +121,14 @@ const Signup = () => {
             <input
               type="text"
               name="lastName"
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className={`w-full px-3 py-2 bg-gray-50 border rounded-lg focus:ring-2 outline-none ${
+                errors.lastName ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-500"
+              }`}
               placeholder="Enter last name"
-              required
               value={formData.lastName}
               onChange={handleChange}
             />
+            {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
           </div>
 
           {/* Email */}
@@ -142,12 +137,14 @@ const Signup = () => {
             <input
               type="email"
               name="email"
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className={`w-full px-3 py-2 bg-gray-50 border rounded-lg focus:ring-2 outline-none ${
+                errors.email ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-500"
+              }`}
               placeholder="Enter your email"
-              required
               value={formData.email}
               onChange={handleChange}
             />
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>
 
           {/* Password */}
@@ -156,12 +153,14 @@ const Signup = () => {
             <input
               type="password"
               name="password"
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className={`w-full px-3 py-2 bg-gray-50 border rounded-lg focus:ring-2 outline-none ${
+                errors.password ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-500"
+              }`}
               placeholder="Create password"
-              required
               value={formData.password}
               onChange={handleChange}
             />
+            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
           </div>
 
           {/* Confirm Password */}
@@ -170,24 +169,14 @@ const Signup = () => {
             <input
               type="password"
               name="confirmPassword"
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className={`w-full px-3 py-2 bg-gray-50 border rounded-lg focus:ring-2 outline-none ${
+                errors.confirmPassword ? "border-red-500 focus:ring-red-400" : "border-gray-300 focus:ring-blue-500"
+              }`}
               placeholder="Confirm password"
-              required
               value={formData.confirmPassword}
               onChange={handleChange}
             />
-          </div>
-
-          {/* Terms */}
-          <div className="flex items-start space-x-2">
-            <input type="checkbox" required className="mt-1" />
-            <p className="text-gray-600 text-sm">
-              I agree to the{" "}
-              <span className="text-blue-600 cursor-pointer">
-                Xpertland.ai agreements
-              </span>{" "}
-              and privacy policy.
-            </p>
+            {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
           </div>
 
           {/* Submit */}

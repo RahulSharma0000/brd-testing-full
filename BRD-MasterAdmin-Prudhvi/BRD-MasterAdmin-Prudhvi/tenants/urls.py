@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
+
 # ---------- IMPORT VIEWSETS ----------
 from .views import (
     TenantViewSet,
@@ -10,7 +11,8 @@ from .views import (
     ReportingPeriodViewSet,
     HolidayViewSet,
     TenantRuleConfigViewSet,
-    CategoryViewSet
+    CategoryViewSet,
+  TenantCreateByMasterView
 )
 
 # ---------- ROUTER ----------
@@ -38,10 +40,14 @@ router.register(r'', TenantViewSet, basename='tenants')
 
 # ---------- URL PATTERNS ----------
 urlpatterns = [
+     path("add/", TenantCreateByMasterView.as_view(), name="add-organization"),
+
     path("signup/", TenantSignupView.as_view(), name="tenant-signup"),
 
     # All router URLs
     path("", include(router.urls)),
+
+
 
     # Onboarding
     path("onboarding/", include("tenants.client_onboarding.urls")),
